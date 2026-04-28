@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spoon Race</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+  :root {
+    --stone: #2c2416;
+    --parchment: #f5edd6;
+    --parchment-dark: #e8d9b8;
+    --ink: #1a1208;
+    --gold: #c9922a;
+    --gold-light: #e8b84b;
+    --muted: #7a6a50;
+    --track1: #c8b87a;
+    --track2: #b8d4a8;
+    --track3: #b8c8e8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--stone);
+    font-family: 'Crimson Text', Georgia, serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .container {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    border-radius: 4px;
+    width: 100%;
+    max-width: 680px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+
+  .header {
+    background: var(--stone);
+    border-bottom: 2px solid var(--gold);
+    padding: 12px 20px;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+  }
+
+  .race-area {
+    padding: 20px 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Track row ── */
+  .track-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .track-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    width: 78px;
+    flex-shrink: 0;
+    text-align: right;
+    line-height: 1.3;
+  }
+
+  .track-label span {
+    display: block;
+    font-family: 'Crimson Text', serif;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: #a09070;
+    margin-top: 1px;
+  }
+
+  .track-outer {
+    flex: 1;
+    position: relative;
+    height: 44px;
+    border-radius: 4px;
+    overflow: visible;
+  }
+
+  /* lane stripe */
+  .track-lane {
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    transform: translateY(-50%);
+    height: 16px;
+    border-radius: 3px;
+    border: 1.5px solid rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
+
+  .track-lane::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      90deg,
+      transparent, transparent 18px,
+      rgba(255,255,255,0.18) 18px, rgba(255,255,255,0.18) 20px
+    );
+  }
+
+  /* spoon wrapper — moves along track */
+  .spoon-wrap {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    will-change: left;
+  }
+
+  /* speed indicator arc under spoon */
+  .speed-ring {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 6px;
+    border-radius: 0 0 14px 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .speed-lines {
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    padding-right: 3px;
+  }
+
+  .speed-lines span {
+    display: block;
+    height: 2px;
+    background: rgba(201,146,42,0.6);
+    border-radius: 1px;
+  }
+
+  /* stat badge */
+  .stat-badge {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--stone);
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    padding: 1px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    letter-spacing: 0.04em;
+  }
+
+  /* done flash */
+  .done-flash {
+    position: absolute;
+    top: 50%;
+    right: -2px;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  /* ── Go button ── */
+  .btn-row {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 8px;
+  }
+
+  .go-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.12em;
+    background: var(--stone);
+    color: var(--gold-light);
+    border: 2px solid var(--gold);
+    padding: 10px 40px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+  }
+
+  .go-btn:hover:not(:disabled) {
+    background: var(--gold);
+    color: var(--stone);
+    transform: translateY(-1px);
+  }
+
+  .go-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+  /* data strip below */
+  .data-strip {
+    display: flex;
+    justify-content: space-around;
+    background: rgba(201,146,42,0.07);
+    border-top: 1px solid var(--parchment-dark);
+    padding: 8px 10px 10px;
+    gap: 6px;
+  }
+
+  .data-cell {
+    text-align: center;
+    flex: 1;
+    border-right: 1px solid var(--parchment-dark);
+    padding: 0 6px;
+  }
+  .data-cell:last-child { border-right: none; }
+
+  .data-cell .spoon-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .data-cell .stat-line {
+    font-size: 0.8rem;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  .data-cell .stat-line em {
+    font-style: normal;
+    font-weight: 600;
+    color: #6a4a10;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>The Spoon Trials</h1>
+  </div>
+
+  <div class="race-area">
+    <!-- Track 1: Ladle -->
+    <div class="track-row">
+      <div class="track-label">Ladle<span>5 m/s max</span></div>
+      <div class="track-outer" id="outer0">
+        <div class="track-lane" style="background: linear-gradient(90deg, #d4c48a, #c8b870);"></div>
+        <div class="spoon-wrap" id="spoon0" style="left:0px;">
+          <div class="speed-lines" id="lines0">
+            <span style="width:14px"></span>
+            <span style="width:10px"></span>
+            <span style="width:7px"></span>
+          </div>
+          <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+            <!-- ladle: big round bowl -->
+            <ellipse cx="18" cy="14" rx="11" ry="10" fill="#c4a855" stroke="#8a7430" stroke-width="1.2"/>
+            <ellipse cx="18" cy="13" rx="8" ry="7" fill="#e8c870" opacity="0.5"/>
+            <rect x="17" y="23" width="3" height="10" rx="1.5" fill="#c4a855" stroke="#8a7430" stroke-width="1"/>
+            <ellipse cx="18.5" cy="32" rx="2.5" ry="1.5" fill="#8a7430" opacity="0.5"/>
+            <!-- eyes -->
+            <circle cx="14" cy="13" r="1.5" fill="#3a2a10"/>
+            <circle cx="22" cy="13" r="1.5" fill="#3a2a10"/>
+            <!-- smile -->
+            <path d="M15 17 Q18 20 21 17" stroke="#3a2a10" stroke-width="1" fill="none" stroke-linecap="round"/>
+          </svg>
+          <div class="stat-badge" id="badge0">5 m/s</div>
+        </div>
+        <div class="done-flash" id="done0">🏁</div>
+      </div>
+    </div>
+
+    <!-- Track 2: Teaspoon -->
+    <div class="track-row">
+      <div class="track-label">Teaspoon<span>10 m/s max</span></div>
+      <div class="track-outer" id="outer1">
+        <div class="track-lane" style="background: linear-gradient(90deg, #b8d4a8, #94c078);"></div>
+        <div class="spoon-wrap" id="spoon1" style="left:0px;">
+          <div class="speed-lines" id="lines1">
+            <span style="width:14px"></span>
+            <span style="width:10px"></span>
+            <span style="width:7px"></span>
+          </div>
+          <svg width="30" height="36" viewBox="0 0 30 36" xmlns="http://www.w3.org/2000/svg">
+            <!-- teaspoon: small oval bowl -->
+            <ellipse cx="15" cy="10" rx="7" ry="8" fill="#b0b8c8" stroke="#6878a0" stroke-width="1.2"/>
+            <ellipse cx="15" cy="9" rx="5" ry="5.5" fill="#d8e0f0" opacity="0.5"/>
+            <rect x="14" y="17" width="2.5" height="14" rx="1.2" fill="#b0b8c8" stroke="#6878a0" stroke-width="1"/>
+            <ellipse cx="15.25" cy="30" rx="2" ry="1.2" fill="#6878a0" opacity="0.5"/>
+            <!-- eyes -->
+            <circle cx="12" cy="9" r="1.2" fill="#1a2240"/>
+            <circle cx="18" cy="9" r="1.2" fill="#1a2240"/>
+            <!-- smile -->
+            <path d="M12.5 12.5 Q15 15 17.5 12.5" stroke="#1a2240" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+          </svg>
+          <div class="stat-badge" id="badge1">10 m/s</div>
+        </div>
+        <div class="done-flash" id="done1">🏁</div>
+      </div>
+    </div>
+
+    <!-- Track 3: Soup Spoon -->
+    <div class="track-row">
+      <div class="track-label">Soup<br>Spoon<span>9 m/s max</span></div>
+      <div class="track-outer" id="outer2">
+        <div class="track-lane" style="background: linear-gradient(90deg, #c8b8e0, #a890c8);"></div>
+        <div class="spoon-wrap" id="spoon2" style="left:0px;">
+          <div class="speed-lines" id="lines2">
+            <span style="width:14px"></span>
+            <span style="width:10px"></span>
+            <span style="width:7px"></span>
+          </div>
+          <svg width="32" height="36" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg">
+            <!-- soup spoon: medium oval -->
+            <ellipse cx="16" cy="11" rx="9" ry="9" fill="#c89858" stroke="#8a6030" stroke-width="1.2"/>
+            <ellipse cx="16" cy="10" rx="6.5" ry="6.5" fill="#e8b870" opacity="0.5"/>
+            <rect x="15" y="19" width="2.8" height="13" rx="1.4" fill="#c89858" stroke="#8a6030" stroke-width="1"/>
+            <ellipse cx="16.4" cy="31" rx="2.2" ry="1.3" fill="#8a6030" opacity="0.5"/>
+            <!-- eyes -->
+            <circle cx="12.5" cy="10" r="1.4" fill="#2a1a08"/>
+            <circle cx="19.5" cy="10" r="1.4" fill="#2a1a08"/>
+            <!-- smile -->
+            <path d="M13 14 Q16 17 19 14" stroke="#2a1a08" stroke-width="1" fill="none" stroke-linecap="round"/>
+          </svg>
+          <div class="stat-badge" id="badge2">9 m/s</div>
+        </div>
+        <div class="done-flash" id="done2">🏁</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="go-btn" id="goBtn" onclick="startRace()">Go!</button>
+  </div>
+
+  <div class="data-strip">
+    <div class="data-cell">
+      <span class="spoon-name">Ladle</span>
+      <div class="stat-line">40m in <em>8.5s</em></div>
+      <div class="stat-line">Max: <em>5 m/s</em></div>
+      <div class="stat-line">Time to max speed: <em>1s</em></div>
+    </div>
+    <div class="data-cell">
+      <span class="spoon-name">Teaspoon</span>
+      <div class="stat-line">40m in <em>5s</em></div>
+      <div class="stat-line">Max: <em>10 m/s</em></div>
+      <div class="stat-line">Time to max speed: <em>2s</em></div>
+    </div>
+    <div class="data-cell">
+      <span class="spoon-name">Soup Spoon</span>
+      <div class="stat-line">40m in <em>~6s</em></div>
+      <div class="stat-line">Max: <em>9 m/s</em></div>
+      <div class="stat-line">Time to max speed: <em>3s</em></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Spoon data ──
+  const spoons = [
+    { id: 0, vmax: 5,  accelTime: 1, totalDist: 40 },  // ladle:      8.5s total
+    { id: 1, vmax: 10, accelTime: 2, totalDist: 40 },  // teaspoon:   5.0s total
+    { id: 2, vmax: 9,  accelTime: 3, totalDist: 40 },  // soup spoon: ~5.94s total
+  ];
+
+  // Normalise: furthest spoon fills the track
+  const MAX_DIST = Math.max(...spoons.map(s => s.totalDist)); // 72
+
+  // Animation runs in "compressed" time so the whole thing fits in ~9s
+  // Real max time is 8s for soup spoon — we'll run at 1:1 but cap display at 9s
+  const ANIM_DURATION = 10500; // ms — ladle needs ~8.5s to finish
+
+  let running = false;
+  let startTime = null;
+  let animFrame = null;
+
+  // Cache DOM refs
+  const spoonEls  = spoons.map(s => document.getElementById('spoon' + s.id));
+  const linesEls  = spoons.map(s => document.getElementById('lines' + s.id));
+  const badgeEls  = spoons.map(s => document.getElementById('badge' + s.id));
+  const doneEls   = spoons.map(s => document.getElementById('done' + s.id));
+  const outerEls  = spoons.map(s => document.getElementById('outer' + s.id));
+  const goBtn     = document.getElementById('goBtn');
+
+  // ── Place finish lines and set track widths ──
+
+  // ── Position calculation (pixels) ──
+  function getPositionPx(spoon, tSec, trackW) {
+    const usableW = trackW - 36; // subtract spoon width
+    let dist;
+
+    if (tSec <= 0) {
+      dist = 0;
+    } else if (tSec < spoon.accelTime) {
+      const a = spoon.vmax / spoon.accelTime;
+      dist = 0.5 * a * tSec * tSec;
+    } else {
+      const distAccel = 0.5 * spoon.vmax * spoon.accelTime;
+      dist = distAccel + spoon.vmax * (tSec - spoon.accelTime);
+    }
+
+    dist = Math.min(dist, spoon.totalDist);
+    // each spoon scales to its OWN total distance so they all reach the end
+    return (dist / spoon.totalDist) * usableW;
+  }
+
+  // ── Speed calculation for motion lines ──
+  function getSpeed(spoon, tSec) {
+    if (tSec <= 0) return 0;
+    if (tSec >= spoon.accelTime) return spoon.vmax;
+    return (spoon.vmax / spoon.accelTime) * tSec;
+  }
+
+  // ── Race ──
+  function startRace() {
+    if (running) {
+      resetRace();
+      return;
+    }
+    running = true;
+    goBtn.textContent = 'Reset';
+    startTime = performance.now();
+    animFrame = requestAnimationFrame(tick);
+  }
+
+  function tick(now) {
+    const elapsed = (now - startTime) / 1000; // seconds
+
+    spoons.forEach((s, i) => {
+      const trackW = outerEls[i].clientWidth;
+      const px     = getPositionPx(s, elapsed, trackW);
+      const speed  = getSpeed(s, elapsed);
+      const done   = elapsed >= (s.totalDist / s.vmax + s.accelTime * 0.5) && px >= (s.totalDist / MAX_DIST) * (trackW - 36) - 2;
+
+      spoonEls[i].style.left = px + 'px';
+
+      // speed lines opacity based on fraction of max speed
+      const speedFrac = speed / s.vmax;
+      linesEls[i].style.opacity = (speedFrac * 0.9).toFixed(2);
+
+      // line widths pulse with speed
+      const lineSpans = linesEls[i].querySelectorAll('span');
+      lineSpans[0].style.width = (6 + speedFrac * 14) + 'px';
+      lineSpans[1].style.width = (4 + speedFrac * 10) + 'px';
+      lineSpans[2].style.width = (3 + speedFrac * 7)  + 'px';
+
+      // badge shows live current speed once moving
+      if (elapsed > 0.1) {
+        badgeEls[i].style.opacity = '1';
+        const displaySpeed = Math.min(speed, s.vmax);
+        badgeEls[i].textContent = displaySpeed.toFixed(1) + ' m/s';
+      }
+
+      // done flag
+      if (done) {
+        doneEls[i].style.opacity = '1';
+        linesEls[i].style.opacity = '0';
+      }
+    });
+
+    if (elapsed < ANIM_DURATION / 1000) {
+      animFrame = requestAnimationFrame(tick);
+    } else {
+      running = false;
+      goBtn.textContent = 'Again!';
+      goBtn.disabled = false;
+    }
+  }
+
+  function resetRace() {
+    cancelAnimationFrame(animFrame);
+    running = false;
+    startTime = null;
+
+    spoons.forEach((s, i) => {
+      spoonEls[i].style.left  = '0px';
+      linesEls[i].style.opacity = '0';
+      badgeEls[i].style.opacity = '0';
+      doneEls[i].style.opacity  = '0';
+    });
+
+    goBtn.textContent = 'Go!';
+    goBtn.disabled    = false;
+  }
+</script>
+</body>
+</html>

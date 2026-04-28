@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Dropping Experiment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+  :root {
+    --stone: #2c2416;
+    --parchment: #f5edd6;
+    --parchment-dark: #e8d9b8;
+    --ink: #1a1208;
+    --gold: #c9922a;
+    --gold-light: #e8b84b;
+    --red: #8b2020;
+    --muted: #7a6a50;
+    --shadow: rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--stone);
+    font-family: 'Crimson Text', Georgia, serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background-image: 
+      repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px),
+      repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px);
+  }
+
+  .container {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    border-radius: 4px;
+    max-width: 780px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 60px rgba(201,146,42,0.05);
+    overflow: hidden;
+  }
+
+  .header {
+    background: var(--stone);
+    border-bottom: 2px solid var(--gold);
+    padding: 14px 24px;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    font-size: 1.3rem;
+    letter-spacing: 0.08em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .header p {
+    color: #b0a080;
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-top: 3px;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 0;
+    min-height: 440px;
+  }
+
+  /* ── LEFT: experiment area ── */
+  .experiment {
+    border-right: 2px solid var(--parchment-dark);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(180deg, #e8d4aa 0%, var(--parchment) 100%);
+  }
+
+  .experiment-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Drop area */
+  .drop-area {
+    position: relative;
+    width: 180px;
+    height: 320px;
+    background: linear-gradient(180deg, #c8dce8 0%, #a8c0d4 60%, #8898a8 100%);
+    border: 2px solid #8898a8;
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: ns-resize;
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* stone wall texture lines */
+  .drop-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+      repeating-linear-gradient(90deg, transparent, transparent 38px, rgba(0,0,0,0.06) 38px, rgba(0,0,0,0.06) 40px),
+      repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(0,0,0,0.04) 28px, rgba(0,0,0,0.04) 30px);
+    pointer-events: none;
+  }
+
+  .ground {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: linear-gradient(180deg, #7a6040 0%, #5a4020 100%);
+    border-top: 3px solid #a08050;
+  }
+
+  .ground-label {
+    position: absolute;
+    bottom: 6px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    color: #d4a860;
+    letter-spacing: 0.1em;
+  }
+
+  /* height ruler on left edge */
+  .ruler {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 28px;
+    width: 28px;
+    background: rgba(0,0,0,0.15);
+    border-right: 1px solid rgba(0,0,0,0.2);
+  }
+
+  .ruler-tick {
+    position: absolute;
+    right: 0;
+    width: 8px;
+    height: 1px;
+    background: rgba(255,255,255,0.5);
+  }
+
+  .ruler-label {
+    position: absolute;
+    right: 10px;
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.7);
+    transform: translateY(-50%);
+    font-family: 'Cinzel', serif;
+  }
+
+  /* height line */
+  .height-line {
+    position: absolute;
+    left: 28px;
+    right: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.4);
+    border-top: 1px dashed rgba(255,255,255,0.5);
+    pointer-events: none;
+    transition: top 0.05s;
+  }
+
+  .height-badge {
+    position: absolute;
+    right: 6px;
+    top: -18px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-family: 'Cinzel', serif;
+    white-space: nowrap;
+  }
+
+  /* rock */
+  .rock {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 30px;
+    cursor: grab;
+    transition: filter 0.15s;
+    z-index: 10;
+  }
+
+  .rock:active { cursor: grabbing; }
+  .rock.falling { cursor: default; transition: top 0s; }
+  .rock.landed { filter: brightness(0.7); }
+
+  .rock svg { width: 100%; height: 100%; }
+
+  /* impact flash */
+  .impact-flash {
+    position: absolute;
+    bottom: 28px;
+    left: 0; right: 0;
+    height: 0;
+    background: radial-gradient(ellipse at center bottom, rgba(255,220,100,0.9) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: none;
+  }
+
+  .impact-flash.show {
+    height: 40px;
+    opacity: 1;
+    animation: flash 0.4s ease-out forwards;
+  }
+
+  @keyframes flash {
+    0% { opacity: 1; height: 50px; }
+    100% { opacity: 0; height: 10px; }
+  }
+
+  /* dust puffs */
+  .dust {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .dust.show {
+    animation: dustAnim 0.6s ease-out forwards;
+  }
+
+  .dust span {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(180,160,120,0.7);
+  }
+
+  .dust span:nth-child(1) { transform: translate(-8px, 0); }
+  .dust span:nth-child(3) { transform: translate(8px, 0); }
+
+  @keyframes dustAnim {
+    0% { opacity: 0.9; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+  }
+
+  /* instructions below drop area */
+  .hint {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+  }
+
+
+
+  /* ── RIGHT: data table ── */
+  .data-panel {
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--parchment);
+  }
+
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--parchment-dark);
+    padding-bottom: 6px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  thead tr {
+    background: var(--stone);
+  }
+
+  thead th {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: var(--gold-light);
+    padding: 6px 8px;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--parchment-dark);
+    transition: background 0.2s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody tr.new-row {
+    animation: rowIn 0.4s ease-out;
+    background: rgba(201,146,42,0.12);
+  }
+
+  @keyframes rowIn {
+    from { background: rgba(201,146,42,0.4); transform: translateX(6px); }
+    to { background: rgba(201,146,42,0.12); transform: translateX(0); }
+  }
+
+  td {
+    padding: 6px 8px;
+    text-align: center;
+    color: var(--ink);
+  }
+
+  td:first-child { font-weight: 600; color: var(--muted); font-size: 0.8rem; }
+
+  .empty-hint {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  /* observation box */
+  .observe-box {
+    background: rgba(201,146,42,0.08);
+    border: 1px solid rgba(201,146,42,0.3);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-style: italic;
+    min-height: 60px;
+    line-height: 1.5;
+  }
+
+  .observe-box strong {
+    font-style: normal;
+    color: var(--ink);
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── PREDICTION OVERLAY ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+
+  .dialog {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    border-radius: 4px;
+    max-width: 460px;
+    width: 100%;
+    padding: 28px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+    animation: dialogIn 0.3s ease-out;
+  }
+
+  @keyframes dialogIn {
+    from { transform: translateY(-20px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .dialog-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    color: var(--stone);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .dialog-speaker {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+
+  .dialog p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+
+  .dialog p em {
+    color: var(--red);
+    font-style: italic;
+  }
+
+  .predict-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .predict-btn {
+    font-family: 'Crimson Text', serif;
+    font-size: 1rem;
+    text-align: left;
+    background: var(--parchment-dark);
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 3px;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+  }
+
+  .predict-btn:hover {
+    background: rgba(201,146,42,0.18);
+    border-color: var(--gold);
+  }
+
+  .predict-btn.selected {
+    background: rgba(201,146,42,0.2);
+    border-color: var(--gold);
+    font-weight: 600;
+  }
+
+  .dialog-confirm {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    background: var(--stone);
+    color: var(--gold-light);
+    border: 2px solid var(--gold);
+    padding: 9px 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    float: right;
+    margin-top: 6px;
+    transition: background 0.15s;
+  }
+
+  .dialog-confirm:hover:not(:disabled) {
+    background: var(--gold);
+    color: var(--stone);
+  }
+
+  .dialog-confirm:disabled { opacity: 0.35; cursor: default; }
+
+  .answer-btn {
+    font-family: 'Crimson Text', serif;
+    font-size: 0.95rem;
+    text-align: left;
+    background: var(--parchment-dark);
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 3px;
+    padding: 9px 12px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+    width: 100%;
+  }
+
+  .answer-btn:hover:not(:disabled) {
+    background: rgba(201,146,42,0.18);
+    border-color: var(--gold);
+  }
+
+  .answer-btn.correct {
+    background: rgba(60,120,60,0.15);
+    border-color: #4a8a4a;
+    color: #2a5a2a;
+    font-weight: 600;
+  }
+
+  .answer-btn.wrong {
+    background: rgba(139,32,32,0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .answer-btn:disabled { cursor: default; }
+
+  .answer-feedback {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--ink);
+    font-style: italic;
+    min-height: 0;
+    padding: 0 2px;
+  }
+
+  .prediction-badge {
+    background: rgba(201,146,42,0.12);
+    border: 1.5px solid rgba(201,146,42,0.4);
+    border-radius: 3px;
+    padding: 8px 10px;
+    font-size: 0.88rem;
+    color: var(--ink);
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .prediction-badge strong {
+    font-style: normal;
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- PREDICTION OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <div class="dialog-title">Before We Begin</div>
+    <div class="dialog-speaker">— Kepler strokes his tiny beard thoughtfully —</div>
+    <p>
+      "Before you start dropping rocks," Kepler says, "I want you to <em>predict</em> something. 
+      If you drop a rock from higher and higher up — what do you think will happen to the 
+      <em>time it takes to hit the ground?</em>"
+    </p>
+    <div class="predict-options" id="predictOptions">
+      <button class="predict-btn" onclick="selectPrediction(this, 'same')">
+        ⚖️ The time stays the same — height doesn't matter.
+      </button>
+      <button class="predict-btn" onclick="selectPrediction(this, 'more')">
+        ⬆️ Higher drop → longer fall time.
+      </button>
+      <button class="predict-btn" onclick="selectPrediction(this, 'less')">
+        ⬇️ Higher drop → shorter fall time (gravity pulls harder from up high).
+      </button>
+    </div>
+    <button class="dialog-confirm" id="confirmBtn" disabled onclick="closePrediction()">
+      Let's find out →
+    </button>
+  </div>
+</div>
+
+<!-- MAIN GAME -->
+<div class="container">
+  <div class="header">
+    <h1>The Dropping Experiment</h1>
+    <p>Drag the rock to different heights and drop it. Watch what happens!</p>
+  </div>
+
+  <div class="main">
+    <!-- LEFT: drop area -->
+    <div class="experiment">
+      <div class="experiment-label">Experiment Chamber</div>
+
+      <div class="drop-area" id="dropArea">
+        <!-- ruler -->
+        <div class="ruler" id="ruler"></div>
+
+        <!-- height indicator line -->
+        <div class="height-line" id="heightLine" style="display:none;">
+          <div class="height-badge" id="heightBadge">0 cm</div>
+        </div>
+
+        <!-- rock -->
+        <div class="rock" id="rock" style="top: 60px;">
+          <svg viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="17" cy="16" rx="15" ry="13" fill="#6b6055"/>
+            <ellipse cx="17" cy="15" rx="14" ry="12" fill="#7a7060"/>
+            <ellipse cx="13" cy="11" rx="5" ry="3" fill="#9a9080" opacity="0.6"/>
+            <ellipse cx="22" cy="18" rx="3" ry="2" fill="#5a5045" opacity="0.5"/>
+            <ellipse cx="17" cy="15" rx="14" ry="12" fill="none" stroke="#5a5045" stroke-width="1" opacity="0.4"/>
+          </svg>
+        </div>
+
+        <!-- ground -->
+        <div class="ground">
+          <div class="ground-label">GROUND</div>
+        </div>
+
+        <!-- impact effects -->
+        <div class="impact-flash" id="impactFlash"></div>
+        <div class="dust" id="dust">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div class="hint" id="hint">Grab the rock and lift it up — let go to drop!</div>
+    </div>
+
+    <!-- RIGHT: data panel -->
+    <div class="data-panel">
+      <div class="prediction-badge" id="predictionBadge" style="display:none;">
+        <strong>YOUR PREDICTION</strong>
+        <span id="predictionText"></span>
+      </div>
+      <div class="panel-title">Observations</div>
+
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Height (cm)</th>
+            <th>Fall Time (s)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="3" class="empty-hint">No drops yet...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="observe-box" id="observeBox">
+        <strong>What do you notice?</strong>
+        Drop the rock from a few different heights and watch the table fill in.
+      </div>
+
+      <div id="answerSection" style="display:none; flex-direction:column; gap:7px;">
+        <div class="panel-title" style="margin-top:4px;">What did you find?</div>
+        <button class="answer-btn" onclick="checkAnswer(this, true)">
+          &#x2B06;&#xFE0F; Higher drop &rarr; longer fall time
+        </button>
+        <button class="answer-btn" onclick="checkAnswer(this, false)">
+          &#x2696;&#xFE0F; Height doesn&apos;t affect the time
+        </button>
+        <button class="answer-btn" onclick="checkAnswer(this, false)">
+          &#x2B07;&#xFE0F; Higher drop &rarr; shorter fall time
+        </button>
+        <div class="answer-feedback" id="answerFeedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ──
+  const DROP_AREA_HEIGHT = 320;  // px
+  const GROUND_HEIGHT = 28;      // px
+  const ROCK_HEIGHT = 30;        // px
+  const PIXELS_PER_CM = 2.5;     // scale: 1cm = 2.5px
+  const G = 10;                  // m/s²
+
+  const FLIGHT_BOTTOM_PX = DROP_AREA_HEIGHT - GROUND_HEIGHT - ROCK_HEIGHT;
+  const FLIGHT_TOP_PX = 10;
+
+  let rockTopPx = FLIGHT_BOTTOM_PX; // starts on the ground
+  let isDragging = false;
+  let dragStartY = 0;
+  let dragStartTop = 0;
+  let isFalling = false;
+  let dropCount = 0;
+  let prediction = null;
+
+  const rock = document.getElementById('rock');
+  const dropArea = document.getElementById('dropArea');
+  const heightLine = document.getElementById('heightLine');
+  const heightBadge = document.getElementById('heightBadge');
+  const hint = document.getElementById('hint');
+  const tableBody = document.getElementById('tableBody');
+  const observeBox = document.getElementById('observeBox');
+  const impactFlash = document.getElementById('impactFlash');
+  const dust = document.getElementById('dust');
+
+  // ── Build ruler ──
+  function buildRuler() {
+    const ruler = document.getElementById('ruler');
+    const maxCm = Math.round(FLIGHT_BOTTOM_PX / PIXELS_PER_CM);
+    // ticks every 20cm
+    for (let cm = 0; cm <= maxCm; cm += 20) {
+      const px = FLIGHT_BOTTOM_PX - cm * PIXELS_PER_CM;
+      const tick = document.createElement('div');
+      tick.className = 'ruler-tick';
+      tick.style.top = px + 'px';
+      ruler.appendChild(tick);
+      const label = document.createElement('div');
+      label.className = 'ruler-label';
+      label.style.top = px + 'px';
+      label.textContent = cm;
+      ruler.appendChild(label);
+    }
+  }
+  buildRuler();
+
+  // ── Height calculation ──
+  function pxToHeight(topPx) {
+    // height from ground = distance from rock's bottom edge to ground top
+    const rockBottomPx = topPx + ROCK_HEIGHT;
+    const groundTopPx = DROP_AREA_HEIGHT - GROUND_HEIGHT;
+    const heightPx = groundTopPx - rockBottomPx;
+    return Math.max(0, Math.round(heightPx / PIXELS_PER_CM));
+  }
+
+  function heightToCm(topPx) { return pxToHeight(topPx); }
+
+  function calcFallTime(heightCm) {
+    const hMeters = heightCm / 100;
+    const t = Math.sqrt(2 * hMeters / G);
+    return t.toFixed(2);
+  }
+
+  // ── Dragging ──
+  function updateRockPosition(newTop) {
+    newTop = Math.max(FLIGHT_TOP_PX, Math.min(FLIGHT_BOTTOM_PX, newTop));
+    rockTopPx = newTop;
+    rock.style.top = newTop + 'px';
+    // height line
+    const hCm = heightToCm(newTop);
+    if (hCm > 0) {
+      heightLine.style.display = 'block';
+      heightLine.style.top = (newTop + ROCK_HEIGHT / 2) + 'px';
+      heightBadge.textContent = hCm + ' cm';
+    } else {
+      heightLine.style.display = 'none';
+    }
+  }
+
+  // place rock on ground at start
+  rock.style.top = FLIGHT_BOTTOM_PX + 'px';
+
+  rock.addEventListener('mousedown', startDrag);
+  rock.addEventListener('touchstart', startDragTouch, { passive: false });
+
+  function startDrag(e) {
+    if (isFalling) return;
+    e.preventDefault();
+    isDragging = true;
+    dragStartY = e.clientY;
+    dragStartTop = rockTopPx;
+    rock.style.transition = 'none';
+    hint.textContent = 'Lift it as high as you want…';
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+  }
+
+  function startDragTouch(e) {
+    if (isFalling) return;
+    e.preventDefault();
+    isDragging = true;
+    dragStartY = e.touches[0].clientY;
+    dragStartTop = rockTopPx;
+    rock.style.transition = 'none';
+    hint.textContent = 'Lift it as high as you want…';
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('touchend', endDrag);
+  }
+
+  function onDrag(e) {
+    if (!isDragging) return;
+    const dy = e.clientY - dragStartY;
+    updateRockPosition(dragStartTop + dy);
+  }
+
+  function onDragTouch(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dy = e.touches[0].clientY - dragStartY;
+    updateRockPosition(dragStartTop + dy);
+  }
+
+  function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', onDragTouch);
+    document.removeEventListener('touchend', endDrag);
+
+    const hCm = heightToCm(rockTopPx);
+    if (hCm > 2) {
+      // release from above ground — drop it!
+      dropRock();
+    } else {
+      // dropped back near ground, just rest it
+      rockTopPx = FLIGHT_BOTTOM_PX;
+      rock.style.top = FLIGHT_BOTTOM_PX + 'px';
+      heightLine.style.display = 'none';
+      hint.textContent = 'Grab the rock and lift it up — let go to drop!';
+    }
+  }
+
+  function dropRock() {
+    if (isFalling) return;
+    const hCm = heightToCm(rockTopPx);
+    if (hCm <= 0) return;
+
+    isFalling = true;
+    heightLine.style.display = 'none';
+
+    const fallTime = parseFloat(calcFallTime(hCm));
+    const startTop = rockTopPx;
+    const endTop = FLIGHT_BOTTOM_PX;
+    const startTime = performance.now();
+
+    rock.classList.add('falling');
+
+    function animate(now) {
+      const elapsed = (now - startTime) / 1000;
+      const progress = Math.min(elapsed / fallTime, 1);
+      const eased = progress * progress;
+      const currentTop = startTop + (endTop - startTop) * eased;
+      rock.style.top = currentTop + 'px';
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        onLanded(hCm, fallTime);
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function onLanded(hCm, fallTime) {
+    rock.classList.remove('falling');
+    rock.classList.add('landed');
+    isFalling = false;
+
+    impactFlash.classList.remove('show');
+    dust.classList.remove('show');
+    void impactFlash.offsetWidth;
+    impactFlash.classList.add('show');
+    dust.classList.add('show');
+
+    dropCount++;
+    addRow(dropCount, hCm, fallTime);
+
+    setTimeout(() => {
+      rock.classList.remove('landed');
+      rockTopPx = FLIGHT_BOTTOM_PX;
+      rock.style.top = FLIGHT_BOTTOM_PX + 'px';
+      hint.textContent = 'Grab the rock and try a different height!';
+      updateObservation();
+    }, 900);
+  }
+
+  // ── Table ──
+  const drops = [];
+
+  function addRow(n, hCm, t) {
+    drops.push({ n, hCm, t });
+    renderTable();
+  }
+
+  function renderTable() {
+    const sorted = [...drops].sort((a, b) => b.hCm - a.hCm);
+    const latestN = drops[drops.length - 1].n;
+    tableBody.innerHTML = '';
+    sorted.forEach(d => {
+      const tr = document.createElement('tr');
+      if (d.n === latestN) tr.className = 'new-row';
+      tr.innerHTML = `<td>#${d.n}</td><td>${d.hCm}</td><td>${d.t}</td>`;
+      tableBody.appendChild(tr);
+      if (d.n === latestN) setTimeout(() => tr.classList.remove('new-row'), 500);
+    });
+  }
+
+  // ── Observation text ──
+  let answerRevealed = false;
+
+  function updateObservation() {
+    if (dropCount === 0) return;
+    if (answerRevealed) return;
+
+    const observations = [
+      "Try dropping it from different heights. What do you notice about the time?",
+      "Interesting! Drop it from one more height and look for a pattern.",
+      "Do you see a pattern? Take a look at the table and make your choice!",
+    ];
+
+    const idx = Math.min(dropCount - 1, observations.length - 1);
+    observeBox.innerHTML = `<strong>What do you notice?</strong>${observations[idx]}`;
+
+    // show answer buttons after 3 drops
+    if (dropCount >= 3) {
+      const section = document.getElementById('answerSection');
+      section.style.display = 'flex';
+    }
+  }
+
+  function checkAnswer(btn, isCorrect) {
+    if (answerRevealed) return;
+    answerRevealed = true;
+
+    // disable all answer buttons
+    document.querySelectorAll('.answer-btn').forEach(b => {
+      b.disabled = true;
+      if (b === btn) b.classList.add(isCorrect ? 'correct' : 'wrong');
+    });
+
+    // mark the correct one green regardless
+    document.querySelectorAll('.answer-btn').forEach(b => {
+      if (b.textContent.includes('longer fall time')) b.classList.add('correct');
+    });
+
+    const feedback = document.getElementById('answerFeedback');
+    if (isCorrect) {
+      const matched = prediction === 'more';
+      feedback.innerHTML = matched
+        ? `✓ Correct — and it matched your prediction! The higher the drop, the longer it takes. The rock speeds up the whole way down, so more distance means more time.`
+        : `✓ Correct! The higher the drop, the longer it takes. Take a look at your prediction above — how did it compare?`;
+    } else {
+      feedback.innerHTML = `Not quite — take another look at the table. As the height goes up, so does the time. Try a couple more drops if you want to check!`;
+      // re-enable buttons so they can try again
+      setTimeout(() => {
+        answerRevealed = false;
+        document.querySelectorAll('.answer-btn').forEach(b => {
+          b.disabled = false;
+          b.classList.remove('correct', 'wrong');
+        });
+        feedback.innerHTML = '';
+      }, 2200);
+    }
+  }
+
+  // ── Prediction dialog ──
+  function selectPrediction(btn, value) {
+    prediction = value;
+    document.querySelectorAll('.predict-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('confirmBtn').disabled = false;
+  }
+
+  function closePrediction() {
+    document.getElementById('overlay').style.display = 'none';
+    hint.textContent = 'Grab the rock and lift it up — let go to drop!';
+
+    const labels = {
+      more: 'Higher drop → longer fall time',
+      same: "Height doesn't affect the time",
+      less: 'Higher drop → shorter fall time',
+    };
+    document.getElementById('predictionText').textContent = labels[prediction] || '';
+    document.getElementById('predictionBadge').style.display = 'block';
+
+    observeBox.innerHTML = `<strong>What do you notice?</strong>Drop the rock from a few different heights and watch the table fill in.`;
+  }
+</script>
+</body>
+</html>

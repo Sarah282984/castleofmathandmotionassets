@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Throwing Experiment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+  :root {
+    --stone: #2c2416;
+    --parchment: #f5edd6;
+    --parchment-dark: #e8d9b8;
+    --ink: #1a1208;
+    --gold: #c9922a;
+    --gold-light: #e8b84b;
+    --red: #8b2020;
+    --muted: #7a6a50;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--stone);
+    font-family: 'Crimson Text', Georgia, serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px),
+      repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px);
+  }
+
+  .container {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    border-radius: 4px;
+    max-width: 820px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 60px rgba(201,146,42,0.05);
+    overflow: hidden;
+  }
+
+  .header {
+    background: var(--stone);
+    border-bottom: 2px solid var(--gold);
+    padding: 14px 24px;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    font-size: 1.3rem;
+    letter-spacing: 0.08em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .header p {
+    color: #b0a080;
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-top: 3px;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    min-height: 360px;
+  }
+
+  /* ── LEFT: experiment ── */
+  .experiment {
+    position: relative;
+    height: 320px;
+    background: linear-gradient(180deg, #6a9ab8 0%, #90b8d0 30%, #b8d4e8 70%, #c8dce8 100%);
+    border-right: 2px solid var(--parchment-dark);
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* wall on left */
+  .wall {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 22px;
+    background: linear-gradient(90deg, #4a3a28 0%, #6a5a40 60%, #7a6a50 100%);
+    border-right: 2px solid #9a8860;
+    z-index: 4;
+  }
+
+  .wall::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 18px, rgba(0,0,0,0.12) 18px, rgba(0,0,0,0.12) 20px),
+      repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.06) 8px, rgba(0,0,0,0.06) 9px);
+  }
+
+  /* ledge */
+  .ledge {
+    position: absolute;
+    left: 0;
+    width: 88px;
+    height: 14px;
+    background: linear-gradient(180deg, #9a8a68 0%, #6a5a3a 100%);
+    border-bottom: 2px solid #4a3a20;
+    border-right: 3px solid #8a7a58;
+    z-index: 5;
+  }
+
+  .ledge::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 22px; right: 0;
+    height: 4px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 0;
+  }
+
+  /* ground */
+  .ground {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, #7a6040 0%, #5a4020 100%);
+    border-top: 3px solid #a08050;
+    z-index: 3;
+  }
+
+  .ground-label {
+    text-align: center;
+    padding-top: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    color: #d4a860;
+    letter-spacing: 0.1em;
+  }
+
+  /* height ruler on left wall */
+  .ruler-mark {
+    position: absolute;
+    left: 22px;
+    width: 6px;
+    height: 1px;
+    background: rgba(255,255,255,0.45);
+    z-index: 5;
+  }
+
+  .ruler-label {
+    position: absolute;
+    left: 30px;
+    font-size: 0.5rem;
+    color: rgba(255,255,255,0.6);
+    transform: translateY(-50%);
+    font-family: 'Cinzel', serif;
+    z-index: 5;
+  }
+
+  /* trail canvas */
+  #trailCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  /* rock */
+  .rock {
+    position: absolute;
+    width: 34px;
+    height: 30px;
+    cursor: grab;
+    z-index: 10;
+    transition: filter 0.15s;
+  }
+  .rock:active { cursor: grabbing; }
+  .rock.flying { pointer-events: none; cursor: default; }
+  .rock.landed { filter: brightness(0.65); }
+  .rock svg { width: 100%; height: 100%; }
+
+  /* impact */
+  .impact-flash {
+    position: absolute;
+    bottom: 30px;
+    height: 0; width: 50px;
+    background: radial-gradient(ellipse at center bottom, rgba(255,220,100,0.9) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-50%);
+    z-index: 7;
+  }
+  .impact-flash.show { height: 40px; opacity: 1; animation: flash 0.4s ease-out forwards; }
+  @keyframes flash {
+    0% { opacity: 1; height: 50px; }
+    100% { opacity: 0; height: 10px; }
+  }
+  .dust {
+    position: absolute;
+    bottom: 30px;
+    display: flex; gap: 6px;
+    pointer-events: none; opacity: 0;
+    z-index: 7;
+    transform: translateX(-50%);
+  }
+  .dust.show { animation: dustAnim 0.6s ease-out forwards; }
+  .dust span { display: block; width: 10px; height: 10px; border-radius: 50%; background: rgba(180,160,120,0.7); }
+  @keyframes dustAnim {
+    0% { opacity: 0.9; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+  }
+
+  /* Hope speech bubble */
+  .hope-bubble {
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--parchment);
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    padding: 9px 14px;
+    max-width: 270px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--ink);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    line-height: 1.45;
+  }
+  .hope-bubble.show { opacity: 1; }
+  .hope-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px; left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--gold);
+  }
+  .hope-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* hint overlay */
+  .hint {
+    position: absolute;
+    bottom: 38px; left: 0; right: 0;
+    text-align: center;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.88);
+    font-style: italic;
+    pointer-events: none;
+    z-index: 8;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+  }
+
+  /* ── RIGHT: data panel ── */
+  .data-panel {
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    background: var(--parchment);
+  }
+
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--parchment-dark);
+    padding-bottom: 5px;
+  }
+
+  .prediction-badge {
+    background: rgba(201,146,42,0.12);
+    border: 1.5px solid rgba(201,146,42,0.4);
+    border-radius: 3px;
+    padding: 8px 10px;
+    font-size: 0.86rem;
+    color: var(--ink);
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .prediction-badge strong {
+    font-style: normal;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  thead tr { background: var(--stone); }
+  thead th {
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    color: var(--gold-light);
+    padding: 5px 5px;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  tbody tr { border-bottom: 1px solid var(--parchment-dark); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr.new-row { animation: rowIn 0.4s ease-out; background: rgba(201,146,42,0.12); }
+  @keyframes rowIn {
+    from { background: rgba(201,146,42,0.4); transform: translateX(5px); }
+    to { background: rgba(201,146,42,0.12); transform: translateX(0); }
+  }
+  td { padding: 5px 5px; text-align: center; color: var(--ink); }
+  td:first-child { font-weight: 600; color: var(--muted); font-size: 0.76rem; }
+  .empty-hint { color: var(--muted); font-style: italic; font-size: 0.84rem; text-align: center; padding: 10px 0; }
+
+  .observe-box {
+    background: rgba(201,146,42,0.08);
+    border: 1px solid rgba(201,146,42,0.3);
+    border-radius: 3px;
+    padding: 9px 11px;
+    font-size: 0.84rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.5;
+    min-height: 50px;
+  }
+  .observe-box strong {
+    font-style: normal;
+    color: var(--ink);
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    display: block;
+    margin-bottom: 3px;
+    letter-spacing: 0.05em;
+  }
+
+  .answer-btn {
+    font-family: 'Crimson Text', serif;
+    font-size: 0.92rem;
+    text-align: left;
+    background: var(--parchment-dark);
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 3px;
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+    width: 100%;
+  }
+  .answer-btn:hover:not(:disabled) { background: rgba(201,146,42,0.18); border-color: var(--gold); }
+  .answer-btn.correct { background: rgba(60,120,60,0.15); border-color: #4a8a4a; color: #2a5a2a; font-weight: 600; }
+  .answer-btn.wrong { background: rgba(139,32,32,0.1); border-color: var(--red); color: var(--red); }
+  .answer-btn:disabled { cursor: default; }
+  .answer-feedback { font-size: 0.84rem; line-height: 1.5; color: var(--ink); font-style: italic; padding: 0 2px; }
+
+  /* ── PREDICTION OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 16px;
+  }
+  .dialog {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    border-radius: 4px;
+    max-width: 460px; width: 100%;
+    padding: 28px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+    animation: dialogIn 0.3s ease-out;
+  }
+  @keyframes dialogIn {
+    from { transform: translateY(-18px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .dialog-title { font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--stone); margin-bottom: 8px; letter-spacing: 0.04em; }
+  .dialog-speaker { font-size: 0.8rem; color: var(--muted); font-style: italic; margin-bottom: 14px; }
+  .dialog p { font-size: 1rem; line-height: 1.6; color: var(--ink); margin-bottom: 18px; }
+  .dialog p em { color: var(--red); font-style: italic; }
+  .predict-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .predict-btn {
+    font-family: 'Crimson Text', serif;
+    font-size: 1rem; text-align: left;
+    background: var(--parchment-dark);
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 3px; padding: 10px 14px;
+    cursor: pointer; color: var(--ink);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+  }
+  .predict-btn:hover { background: rgba(201,146,42,0.18); border-color: var(--gold); }
+  .predict-btn.selected { background: rgba(201,146,42,0.2); border-color: var(--gold); font-weight: 600; }
+  .dialog-confirm {
+    font-family: 'Cinzel', serif; font-size: 0.85rem;
+    background: var(--stone); color: var(--gold-light);
+    border: 2px solid var(--gold); padding: 9px 24px;
+    border-radius: 3px; cursor: pointer;
+    letter-spacing: 0.05em; float: right; margin-top: 6px;
+    transition: background 0.15s;
+  }
+  .dialog-confirm:hover:not(:disabled) { background: var(--gold); color: var(--stone); }
+  .dialog-confirm:disabled { opacity: 0.35; cursor: default; }
+</style>
+</head>
+<body>
+
+<!-- PREDICTION OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <div class="dialog-title">Before We Begin</div>
+    <div class="dialog-speaker">— Hope leans forward, eyes bright —</div>
+    <p>
+      Hope points to the rock on the ledge. "Could you please throw it from up there — 
+      perfectly sideways, no up, no down, just straight out." She taps her chin. 
+      "But before you do: <em>what do you think will happen to the fall time if you 
+      throw it faster or slower sideways?</em>"
+    </p>
+    <div class="predict-options">
+      <button class="predict-btn" onclick="selectPrediction(this,'less')">
+        ⚡ Faster sideways throw → shorter fall time
+      </button>
+      <button class="predict-btn" onclick="selectPrediction(this,'same')">
+        ⚖️ Sideways speed doesn't affect the fall time
+      </button>
+      <button class="predict-btn" onclick="selectPrediction(this,'more')">
+        🐢 Faster sideways throw → longer fall time
+      </button>
+    </div>
+    <button class="dialog-confirm" id="confirmBtn" disabled onclick="closePrediction()">
+      Let's find out →
+    </button>
+  </div>
+</div>
+
+<!-- MAIN GAME -->
+<div class="container">
+  <div class="header">
+    <h1>The Throwing Experiment</h1>
+    <p>Grab the rock and fling it sideways from the ledge!</p>
+  </div>
+
+  <div class="main">
+    <!-- LEFT: experiment area -->
+    <div class="experiment" id="expArea">
+      <canvas id="trailCanvas"></canvas>
+
+      <div class="wall"></div>
+
+      <!-- ruler marks -->
+      <div id="rulerMarks"></div>
+
+      <!-- ledge -->
+      <div class="ledge" id="ledge"></div>
+
+      <!-- rock -->
+      <div class="rock" id="rock">
+        <svg viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="17" cy="16" rx="15" ry="13" fill="#6b6055"/>
+          <ellipse cx="17" cy="15" rx="14" ry="12" fill="#7a7060"/>
+          <ellipse cx="13" cy="11" rx="5" ry="3" fill="#9a9080" opacity="0.6"/>
+          <ellipse cx="22" cy="18" rx="3" ry="2" fill="#5a5045" opacity="0.5"/>
+          <ellipse cx="17" cy="15" rx="14" ry="12" fill="none" stroke="#5a5045" stroke-width="1" opacity="0.4"/>
+        </svg>
+      </div>
+
+      <!-- ground -->
+      <div class="ground"><div class="ground-label">GROUND</div></div>
+
+      <!-- impact fx -->
+      <div class="impact-flash" id="impactFlash"></div>
+      <div class="dust" id="dust"><span></span><span></span><span></span></div>
+
+      <!-- Hope warning -->
+      <div class="hope-bubble" id="hopeBubble">
+        <span class="hope-name">✨ Hope</span>
+        "Try to throw it perfectly sideways — no vertical speed at all!"
+      </div>
+
+      <div class="hint" id="hint">Grab the rock and fling it to the right!</div>
+    </div>
+
+    <!-- RIGHT: data panel -->
+    <div class="data-panel">
+      <div class="prediction-badge" id="predictionBadge" style="display:none;">
+        <strong>YOUR PREDICTION</strong>
+        <span id="predictionText"></span>
+      </div>
+
+      <div class="panel-title">Observations</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Sideways Speed (m/s)</th>
+            <th>Fall Time (s)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="3" class="empty-hint">No throws yet...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="observe-box" id="observeBox">
+        <strong>What do you notice?</strong>
+        Throw at different speeds and watch the fall time column.
+      </div>
+
+      <div id="answerSection" style="display:none; flex-direction:column; gap:7px;">
+        <div class="panel-title" style="margin-top:2px;">What did you find?</div>
+        <button class="answer-btn" onclick="checkAnswer(this,false)">
+          ⚡ Faster throw → shorter fall time
+        </button>
+        <button class="answer-btn" onclick="checkAnswer(this,true)">
+          ⚖️ Sideways speed doesn't affect fall time
+        </button>
+        <button class="answer-btn" onclick="checkAnswer(this,false)">
+          🐢 Faster throw → longer fall time
+        </button>
+        <div class="answer-feedback" id="answerFeedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Physics ──
+  const G        = 10;   // m/s²
+  const PX_PER_M = 50;   // scale
+
+  // ── Layout (all in px) ──
+  const EXP_H      = 320;
+  const GROUND_H   = 30;
+  const ROCK_W     = 34, ROCK_H = 30;
+  const LEDGE_H_M  = 5;                          // metres
+  const LEDGE_PX   = LEDGE_H_M * PX_PER_M;       // 250px
+  const LEDGE_TOP  = EXP_H - GROUND_H - LEDGE_PX; // 40px from top
+  const LEDGE_THICK = 14;
+  const LEDGE_W    = 88;
+
+  // Rock resting position (centred on ledge, sitting on top of it)
+  const ROCK_X0 = LEDGE_W / 2 - ROCK_W / 2;     // ≈ 27px
+  const ROCK_Y0 = LEDGE_TOP - ROCK_H;             // 10px from top
+
+  // Ground contact y for rock top
+  const ROCK_LAND_Y = EXP_H - GROUND_H - ROCK_H; // 260px from top
+
+  // ── State ──
+  let isDragging = false, isFlying = false;
+  let mouseHistory = [];
+  let allTrails = [];   // [{points:[{x,y}], done:bool}]
+  let curTrail  = null;
+  let throwCount = 0;
+  let prediction = null;
+  let answerRevealed = false, answerSectionShown = false;
+  let hopeTimer = null;
+  const drops = [];
+
+  // ── DOM ──
+  const expArea     = document.getElementById('expArea');
+  const canvas      = document.getElementById('trailCanvas');
+  const ctx         = canvas.getContext('2d');
+  const rock        = document.getElementById('rock');
+  const ledgeEl     = document.getElementById('ledge');
+  const hintEl      = document.getElementById('hint');
+  const tableBody   = document.getElementById('tableBody');
+  const observeBox  = document.getElementById('observeBox');
+  const impactFlash = document.getElementById('impactFlash');
+  const dustEl      = document.getElementById('dust');
+  const hopeBubble  = document.getElementById('hopeBubble');
+
+  // ── Init ──
+  function init() {
+    sizeCanvas();
+    ledgeEl.style.top  = LEDGE_TOP + 'px';
+    ledgeEl.style.height = LEDGE_THICK + 'px';
+    buildRuler();
+    placeRock();
+  }
+
+  function sizeCanvas() {
+    const r = expArea.getBoundingClientRect();
+    canvas.width  = r.width  || 560;
+    canvas.height = EXP_H;
+  }
+
+  function placeRock() {
+    rock.style.left = ROCK_X0 + 'px';
+    rock.style.top  = ROCK_Y0 + 'px';
+  }
+
+  function buildRuler() {
+    const container = document.getElementById('rulerMarks');
+    container.innerHTML = '';
+    // ticks every 1m above ground, from ground up to ledge
+    for (let m = 0; m <= LEDGE_H_M; m++) {
+      const yFromTop = EXP_H - GROUND_H - m * PX_PER_M;
+      const tick = document.createElement('div');
+      tick.className = 'ruler-mark';
+      tick.style.top = yFromTop + 'px';
+      container.appendChild(tick);
+      if (m > 0) {
+        const lbl = document.createElement('div');
+        lbl.className = 'ruler-label';
+        lbl.style.top = yFromTop + 'px';
+        lbl.textContent = m + 'm';
+        container.appendChild(lbl);
+      }
+    }
+  }
+
+  window.addEventListener('load', init);
+  window.addEventListener('resize', () => { sizeCanvas(); redrawTrails(); });
+
+  // ── Dragging ──
+  rock.addEventListener('mousedown', startDrag);
+  rock.addEventListener('touchstart', startDragTouch, { passive: false });
+
+  function clientPos(e, touch) {
+    const r   = expArea.getBoundingClientRect();
+    const src = touch ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  function startDrag(e) {
+    if (isFlying) return;
+    e.preventDefault();
+    isDragging = true;
+    mouseHistory = [];
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+  }
+
+  function startDragTouch(e) {
+    if (isFlying) return;
+    e.preventDefault();
+    isDragging = true;
+    mouseHistory = [];
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('touchend', endDrag);
+  }
+
+  function onDrag(e) {
+    if (!isDragging) return;
+    const p = clientPos(e, false);
+    trackMouse(p);
+    rock.style.left = (p.x - ROCK_W / 2) + 'px';
+    rock.style.top  = (p.y - ROCK_H / 2) + 'px';
+  }
+
+  function onDragTouch(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const p = clientPos(e, true);
+    trackMouse(p);
+    rock.style.left = (p.x - ROCK_W / 2) + 'px';
+    rock.style.top  = (p.y - ROCK_H / 2) + 'px';
+  }
+
+  function trackMouse(p) {
+    const now = performance.now();
+    mouseHistory.push({ x: p.x, y: p.y, t: now });
+    while (mouseHistory.length > 0 && now - mouseHistory[0].t > 150) mouseHistory.shift();
+  }
+
+  function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', onDragTouch);
+    document.removeEventListener('touchend', endDrag);
+
+    const vel = computeVelocity();
+
+    if (!vel || Math.abs(vel.vx) < 1.2) {
+      placeRock();
+      hintEl.textContent = 'Swipe it faster — fling it to the right!';
+      return;
+    }
+
+    if (vel.vx < 0) {
+      // threw left — gentle nudge
+      placeRock();
+      hintEl.textContent = 'Throw it to the right — away from the wall!';
+      return;
+    }
+
+    if (tooVertical(vel.vx, vel.vy)) {
+      showHope();
+      placeRock();
+      return;
+    }
+
+    launch(Math.min(vel.vx, 9.5));
+  }
+
+  function computeVelocity() {
+    if (mouseHistory.length < 2) return null;
+    const now    = performance.now();
+    const recent = mouseHistory.filter(p => now - p.t < 110);
+    const src    = recent.length >= 2 ? recent : mouseHistory;
+    const first  = src[0], last = src[src.length - 1];
+    const dt     = (last.t - first.t) / 1000;
+    if (dt < 0.008) return null;
+    return {
+      vx: (last.x - first.x) / dt / PX_PER_M,
+      vy: (last.y - first.y) / dt / PX_PER_M
+    };
+  }
+
+  function tooVertical(vx, vy) {
+    return Math.abs(vy) / Math.max(Math.abs(vx), 0.01) > 0.5;
+  }
+
+  // ── Launch ──
+  function launch(vx_ms) {
+    isFlying = true;
+    rock.classList.add('flying');
+
+    // Always launch from the ledge position (ignore drag release position)
+    rock.style.left = ROCK_X0 + 'px';
+    rock.style.top  = ROCK_Y0 + 'px';
+
+    // New trail
+    curTrail = { points: [], done: false };
+    allTrails.push(curTrail);
+
+    const t0 = performance.now();
+
+    function frame(now) {
+      const t   = (now - t0) / 1000;
+      const x   = ROCK_X0 + vx_ms * PX_PER_M * t;
+      const y   = ROCK_Y0 + 0.5 * G * PX_PER_M * t * t;
+
+      // record trail centre of rock
+      curTrail.points.push({ x: x + ROCK_W / 2, y: y + ROCK_H / 2 });
+      redrawTrails();
+
+      rock.style.left = x + 'px';
+
+      if (y >= ROCK_LAND_Y) {
+        rock.style.top = ROCK_LAND_Y + 'px';
+        curTrail.done  = true;
+        onLanded(vx_ms, t);
+      } else {
+        rock.style.top = y + 'px';
+        requestAnimationFrame(frame);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function onLanded(vx_ms, rawT) {
+    rock.classList.remove('flying');
+    rock.classList.add('landed');
+    isFlying = false;
+
+    // position impact fx at landing spot
+    const lx = parseFloat(rock.style.left) + ROCK_W / 2;
+    impactFlash.style.left = lx + 'px';
+    dustEl.style.left      = lx + 'px';
+    impactFlash.classList.remove('show'); dustEl.classList.remove('show');
+    void impactFlash.offsetWidth;
+    impactFlash.classList.add('show'); dustEl.classList.add('show');
+
+    throwCount++;
+
+    // Use theoretical fall time for clean table values (physics is exact)
+    const fallTime = Math.sqrt(2 * LEDGE_H_M / G);
+    addRow(throwCount, parseFloat(vx_ms.toFixed(1)), fallTime.toFixed(2));
+
+    setTimeout(() => {
+      rock.classList.remove('landed');
+      isFlying = false;
+      placeRock();
+      hintEl.textContent = 'Try a very different speed — faster or slower!';
+      updateObservation();
+    }, 900);
+  }
+
+  // ── Canvas ──
+  function redrawTrails() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    allTrails.forEach((trail, i) => {
+      if (trail.points.length < 2) return;
+      const isLatest = i === allTrails.length - 1;
+      const ageFrac  = allTrails.length > 1 ? i / (allTrails.length - 1) : 1;
+      ctx.globalAlpha = isLatest ? 0.9 : 0.2 + ageFrac * 0.3;
+      ctx.strokeStyle = isLatest ? '#d4981c' : '#907858';
+      ctx.lineWidth   = isLatest ? 2.5 : 1.5;
+      ctx.setLineDash([7, 5]);
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      trail.points.forEach((p, j) => j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+  }
+
+  // ── Hope bubble ──
+  function showHope() {
+    if (hopeTimer) clearTimeout(hopeTimer);
+    hopeBubble.classList.add('show');
+    hopeTimer = setTimeout(() => hopeBubble.classList.remove('show'), 3200);
+  }
+
+  // ── Table ──
+  function addRow(n, vx, t) {
+    drops.push({ n, vx, t });
+    renderTable();
+  }
+
+  function renderTable() {
+    // sort by sideways speed, fastest at top
+    const sorted   = [...drops].sort((a, b) => b.vx - a.vx);
+    const latestN  = drops[drops.length - 1].n;
+    tableBody.innerHTML = '';
+    sorted.forEach(d => {
+      const tr = document.createElement('tr');
+      if (d.n === latestN) tr.className = 'new-row';
+      tr.innerHTML = `<td>#${d.n}</td><td>${d.vx}</td><td>${d.t}</td>`;
+      tableBody.appendChild(tr);
+      if (d.n === latestN) setTimeout(() => tr.classList.remove('new-row'), 500);
+    });
+  }
+
+  // ── Observation nudges ──
+  function updateObservation() {
+    if (answerSectionShown) return;
+    const msgs = [
+      "Throw at a very different speed now. Does the fall time change?",
+      "Interesting! One more throw — try to make it really fast or really slow.",
+      "Look at the fall times. Do they change when the sideways speed changes?",
+    ];
+    observeBox.innerHTML = `<strong>What do you notice?</strong>${msgs[Math.min(throwCount - 1, 2)]}`;
+
+    if (throwCount >= 3) {
+      document.getElementById('answerSection').style.display = 'flex';
+      answerSectionShown = true;
+    }
+  }
+
+  // ── Answer buttons ──
+  function checkAnswer(btn, isCorrect) {
+    if (answerRevealed) return;
+    answerRevealed = true;
+
+    document.querySelectorAll('.answer-btn').forEach(b => {
+      b.disabled = true;
+      if (b === btn) b.classList.add(isCorrect ? 'correct' : 'wrong');
+    });
+    // always highlight the right answer
+    document.querySelectorAll('.answer-btn').forEach(b => {
+      if (b.textContent.includes("doesn't affect")) b.classList.add('correct');
+    });
+
+    const fb = document.getElementById('answerFeedback');
+    if (isCorrect) {
+      fb.innerHTML = (prediction === 'same')
+        ? `✓ Correct — and it matched your prediction! Sideways speed has no effect on fall time. Horizontal and vertical motion are completely independent.`
+        : `✓ Correct! No matter how fast you throw, the fall time stays the same. Compare that to your prediction above — did it surprise you?`;
+    } else {
+      fb.innerHTML = `Not quite — look at the fall time column. Does it change between throws? Try a couple more!`;
+      setTimeout(() => {
+        answerRevealed = false;
+        document.querySelectorAll('.answer-btn').forEach(b => {
+          b.disabled = false;
+          b.classList.remove('correct', 'wrong');
+        });
+        fb.innerHTML = '';
+      }, 2400);
+    }
+  }
+
+  // ── Prediction dialog ──
+  function selectPrediction(btn, value) {
+    prediction = value;
+    document.querySelectorAll('.predict-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('confirmBtn').disabled = false;
+  }
+
+  function closePrediction() {
+    document.getElementById('overlay').style.display = 'none';
+    const labels = {
+      less: 'Faster sideways throw → shorter fall time',
+      same: "Sideways speed doesn't change the fall time",
+      more: 'Faster sideways throw → longer fall time'
+    };
+    document.getElementById('predictionText').textContent = labels[prediction] || '';
+    document.getElementById('predictionBadge').style.display = 'block';
+  }
+</script>
+</body>
+</html>
