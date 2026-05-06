@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Spoon's Crossing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #07040c;
+    color: #c8b89a;
+    font-family: 'EB Garamond', Georgia, serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 12px;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 110%, rgba(200, 110, 50, 0.18), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .frame { position: relative; z-index: 1; text-align: center; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 2.2rem;
+    color: #e8d4a8;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 28px rgba(232, 200, 140, 0.25);
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-style: italic;
+    color: #7a6a4a;
+    font-size: 0.95rem;
+    margin-bottom: 18px;
+    letter-spacing: 0.04em;
+  }
+  .canvas-wrap {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #3a2818;
+    box-shadow:
+      0 0 0 4px #14090a,
+      0 0 60px rgba(180, 100, 50, 0.18),
+      inset 0 0 0 1px rgba(232, 200, 140, 0.06);
+  }
+  canvas {
+    display: block;
+    background: #0e0716;
+    max-width: 100%;
+    height: auto;
+  }
+  .controls {
+    margin-top: 18px;
+    color: #6a5a3e;
+    font-size: 0.92rem;
+    font-style: italic;
+  }
+  kbd {
+    font-family: 'EB Garamond', serif;
+    font-style: normal;
+    background: linear-gradient(180deg, #2a1c10, #1a1008);
+    border: 1px solid #4a3520;
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 1px 8px;
+    color: #d4c5a9;
+    font-size: 0.88rem;
+    margin: 0 1px;
+  }
+  .dot { color: #4a3a26; margin: 0 8px; }
+
+  /* Touch controls — only on touch-only devices */
+  .touch-controls {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 14px;
+    padding: 0 8px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .tc-group { display: flex; gap: 14px; }
+  .tc {
+    background: linear-gradient(180deg, #2a1c10, #14090a);
+    border: 1px solid #5a3f25;
+    border-bottom-width: 2px;
+    border-radius: 50%;
+    width: 62px;
+    height: 62px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-style: italic;
+    color: #d4c5a9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: inset 0 0 0 1px rgba(232, 200, 140, 0.06);
+  }
+  .tc-jump {
+    width: 78px;
+    height: 78px;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+  }
+  .tc.pressed, .tc:active {
+    background: linear-gradient(180deg, #3a2818, #251610);
+    border-bottom-width: 1px;
+    transform: translateY(1px);
+    color: #f0dcae;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .touch-controls { display: flex; }
+    .controls { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <h1>The Spoon's Crossing</h1>
+    <div class="subtitle">— a small matter of bridge physics —</div>
+    <div class="canvas-wrap">
+      <canvas id="game" width="800" height="500"></canvas>
+    </div>
+    <div class="touch-controls" id="touchControls">
+      <div class="tc-group">
+        <button class="tc" data-key="ArrowLeft" aria-label="Move left">&larr;</button>
+        <button class="tc" data-key="ArrowRight" aria-label="Move right">&rarr;</button>
+      </div>
+      <button class="tc tc-jump" data-key=" " aria-label="Jump">jump</button>
+    </div>
+    <div class="controls">
+      <kbd>&larr;</kbd> <kbd>&rarr;</kbd> walk
+      <span class="dot">·</span>
+      <kbd>&uarr;</kbd> or <kbd>space</kbd> jump
+      <span class="dot">·</span>
+      <kbd>R</kbd> or <kbd>space</kbd> restart
+    </div>
+  </div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// --- World layout ---
+const GROUND_Y = 360;
+const CHASM_LEFT = 130;
+const CHASM_RIGHT = 670;
+
+const startPlatform = { x: 0, y: GROUND_Y, w: CHASM_LEFT, h: H - GROUND_Y };
+const endPlatform   = { x: CHASM_RIGHT, y: GROUND_Y, w: W - CHASM_RIGHT, h: H - GROUND_Y };
+
+// --- The spoon ---
+const spoon = {
+  x: 60, y: GROUND_Y - 34,
+  vx: 0, vy: 0,
+  w: 18, h: 34,
+  onGround: false,
+  onRock: null,
+  facing: 1,
+  bounce: 0
+};
+
+// --- Bridge rocks (oscillating in SHM, since they fell through the planet) ---
+const rocks = [];
+const NUM_ROCKS = 7;
+(function buildRocks() {
+  const span = CHASM_RIGHT - CHASM_LEFT;
+  const spacing = span / (NUM_ROCKS + 1);
+  for (let i = 0; i < NUM_ROCKS; i++) {
+    rocks.push({
+      cx: CHASM_LEFT + spacing * (i + 1),
+      w: 64 + (i % 2) * 8,
+      h: 24,
+      centerY: 440,
+      amplitude: 230,
+      period: 3.0 + (i * 0.43) % 1.8,
+      phase: i * 1.1,
+      seed: i * 9001
+    });
+  }
+})();
+
+// --- Stalactites (drawn once into a pattern) ---
+const stalactites = [];
+for (let i = 0; i < 20; i++) {
+  stalactites.push({
+    x: i * 42 + (i * 137) % 30,
+    w: 14 + (i * 17) % 12,
+    len: 22 + (i * 53) % 50
+  });
+}
+
+// --- Stars/dust ---
+const dust = [];
+for (let i = 0; i < 40; i++) {
+  dust.push({
+    x: Math.random() * W,
+    y: Math.random() * GROUND_Y,
+    r: Math.random() * 0.8 + 0.2,
+    twinkle: Math.random() * Math.PI * 2
+  });
+}
+
+// --- Input ---
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === 'r' || e.key === 'R') reset();
+  if (e.key === ' ' && state !== 'playing') reset();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Touch buttons — work for both touch and mouse
+document.querySelectorAll('.tc').forEach(btn => {
+  const key = btn.dataset.key;
+  const press = e => {
+    e.preventDefault();
+    keys[key] = true;
+    btn.classList.add('pressed');
+    if (key === ' ' && state !== 'playing') reset();
+  };
+  const release = e => {
+    e.preventDefault();
+    keys[key] = false;
+    btn.classList.remove('pressed');
+  };
+  btn.addEventListener('touchstart', press, { passive: false });
+  btn.addEventListener('touchend', release);
+  btn.addEventListener('touchcancel', release);
+  btn.addEventListener('mousedown', press);
+  btn.addEventListener('mouseup', release);
+  btn.addEventListener('mouseleave', release);
+});
+
+// Tap canvas to restart on end screen
+const restartOnTap = e => {
+  if (state !== 'playing') {
+    e.preventDefault();
+    reset();
+  }
+};
+canvas.addEventListener('click', restartOnTap);
+canvas.addEventListener('touchstart', restartOnTap, { passive: false });
+
+// --- State ---
+let time = 0;
+let state = 'playing'; // 'playing' | 'won' | 'lost'
+let lastTime = performance.now();
+let endingTimer = 0;
+
+function reset() {
+  spoon.x = 60;
+  spoon.y = GROUND_Y - spoon.h;
+  spoon.vx = 0;
+  spoon.vy = 0;
+  spoon.onGround = true;
+  spoon.onRock = null;
+  spoon.facing = 1;
+  spoon.bounce = 0;
+  state = 'playing';
+  endingTimer = 0;
+}
+
+function updateRocks() {
+  for (const r of rocks) {
+    const t = 2 * Math.PI * time / r.period + r.phase;
+    const cy = r.centerY + r.amplitude * Math.sin(t);
+    r.y = cy - r.h / 2;
+    r.x = r.cx - r.w / 2;
+    r.vy = r.amplitude * (2 * Math.PI / r.period) * Math.cos(t);
+  }
+}
+
+function update(dt) {
+  time += dt;
+  updateRocks();
+
+  if (state !== 'playing') {
+    endingTimer += dt;
+    return;
+  }
+
+  // Horizontal input
+  const SPEED = 230;
+  let target = 0;
+  if (keys['ArrowLeft'])  { target = -SPEED; spoon.facing = -1; }
+  else if (keys['ArrowRight']) { target =  SPEED; spoon.facing =  1; }
+  spoon.vx = spoon.vx * 0.72 + target * 0.28;
+
+  // Jump
+  let jumpedNow = false;
+  if ((keys['ArrowUp'] || keys[' ']) && spoon.onGround) {
+    spoon.vy = -570;
+    spoon.onGround = false;
+    spoon.onRock = null;
+    spoon.bounce = 0.4;
+    jumpedNow = true;
+  }
+
+  // Move horizontal
+  spoon.x += spoon.vx * dt;
+  if (spoon.x < 0) spoon.x = 0;
+  if (spoon.x + spoon.w > W) spoon.x = W - spoon.w;
+
+  // --- Vertical / support resolution ---
+  let resolved = false;
+
+  // Riding a rock
+  if (spoon.onRock && !jumpedNow) {
+    const r = spoon.onRock;
+    const stillOver = spoon.x + spoon.w > r.x + 4 && spoon.x < r.x + r.w - 4;
+    if (stillOver) {
+      spoon.y = r.y - spoon.h;
+      spoon.vy = 0;
+      spoon.onGround = true;
+      resolved = true;
+    } else {
+      spoon.onRock = null;
+      spoon.onGround = false;
+    }
+  }
+
+  // Standing on a fixed platform
+  if (!resolved && spoon.onGround && !jumpedNow && !spoon.onRock) {
+    const onStart = spoon.x + spoon.w > startPlatform.x + 1 && spoon.x < startPlatform.x + startPlatform.w - 1;
+    const onEnd   = spoon.x + spoon.w > endPlatform.x   + 1 && spoon.x < endPlatform.x   + endPlatform.w   - 1;
+    if (onStart) {
+      spoon.y = startPlatform.y - spoon.h;
+      spoon.vy = 0;
+      resolved = true;
+    } else if (onEnd) {
+      spoon.y = endPlatform.y - spoon.h;
+      spoon.vy = 0;
+      resolved = true;
+      state = 'won';
+    } else {
+      spoon.onGround = false;
+    }
+  }
+
+  // Free fall + landing detection
+  if (!resolved) {
+    const prevBottom = spoon.y + spoon.h;
+    spoon.vy += 1350 * dt;
+    if (spoon.vy > 950) spoon.vy = 950;
+    spoon.y += spoon.vy * dt;
+    const newBottom = spoon.y + spoon.h;
+
+    spoon.onGround = false;
+    spoon.onRock = null;
+
+    function tryLand(plat, isRock) {
+      const horiz = spoon.x + spoon.w > plat.x + 2 && spoon.x < plat.x + plat.w - 2;
+      if (horiz && spoon.vy >= 0 && prevBottom <= plat.y + 4 && newBottom >= plat.y) {
+        spoon.y = plat.y - spoon.h;
+        spoon.vy = 0;
+        spoon.onGround = true;
+        spoon.bounce = 0.5;
+        if (isRock) spoon.onRock = plat;
+        return true;
+      }
+      return false;
+    }
+
+    if (tryLand(startPlatform, false)) { /* ok */ }
+    else if (tryLand(endPlatform, false)) { state = 'won'; }
+    else {
+      for (const r of rocks) {
+        if (tryLand(r, true)) break;
+      }
+    }
+  }
+
+  // Squash/stretch decay
+  spoon.bounce *= 0.85;
+
+  // Fell off the world
+  if (spoon.y > H + 80) state = 'lost';
+}
+
+// =====================================================================
+// Drawing
+// =====================================================================
+
+function drawCave() {
+  // Cave gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 40);
+  grad.addColorStop(0, '#1a0d22');
+  grad.addColorStop(0.6, '#120819');
+  grad.addColorStop(1, '#0a0410');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, GROUND_Y + 30);
+
+  // Dust motes / cave stars
+  for (const d of dust) {
+    const tw = (Math.sin(time * 1.3 + d.twinkle) + 1) * 0.5;
+    ctx.fillStyle = `rgba(220, 200, 160, ${0.15 + 0.35 * tw})`;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Stalactites
+  for (const s of stalactites) {
+    const grd = ctx.createLinearGradient(s.x, 0, s.x, s.len);
+    grd.addColorStop(0, '#2a1830');
+    grd.addColorStop(1, '#160a1a');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(s.x - s.w / 2, 0);
+    ctx.lineTo(s.x + s.w / 2, 0);
+    ctx.lineTo(s.x, s.len);
+    ctx.closePath();
+    ctx.fill();
+    // little drip highlight
+    ctx.fillStyle = 'rgba(232, 200, 140, 0.15)';
+    ctx.fillRect(s.x - 0.5, 2, 1, s.len * 0.6);
+  }
+
+  // The chasm (deep dark with warm glow at bottom)
+  const chasmGrad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  chasmGrad.addColorStop(0, '#050208');
+  chasmGrad.addColorStop(0.6, '#0a0408');
+  chasmGrad.addColorStop(1, '#1f0a05');
+  ctx.fillStyle = chasmGrad;
+  ctx.fillRect(CHASM_LEFT, GROUND_Y, CHASM_RIGHT - CHASM_LEFT, H - GROUND_Y);
+
+  // Warm glow rising from the planet's heart
+  const heart = ctx.createRadialGradient(
+    W / 2, H + 20, 30,
+    W / 2, H + 20, 320
+  );
+  heart.addColorStop(0, 'rgba(220, 130, 60, 0.35)');
+  heart.addColorStop(0.5, 'rgba(180, 80, 40, 0.12)');
+  heart.addColorStop(1, 'rgba(180, 80, 40, 0)');
+  ctx.fillStyle = heart;
+  ctx.fillRect(CHASM_LEFT, GROUND_Y, CHASM_RIGHT - CHASM_LEFT, H - GROUND_Y);
+}
+
+function drawPlatform(p, side) {
+  // Cliff body
+  const grad = ctx.createLinearGradient(0, p.y, 0, H);
+  grad.addColorStop(0, '#5a4128');
+  grad.addColorStop(0.15, '#3e2c1a');
+  grad.addColorStop(1, '#1c1208');
+  ctx.fillStyle = grad;
+  ctx.fillRect(p.x, p.y, p.w, p.h);
+
+  // Top mossy/gilded edge
+  ctx.fillStyle = '#7a5a36';
+  ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.fillStyle = 'rgba(232, 200, 140, 0.4)';
+  ctx.fillRect(p.x, p.y, p.w, 1);
+
+  // Cliff edge shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  if (side === 'left') {
+    ctx.fillRect(p.x + p.w - 3, p.y, 3, p.h);
+  } else {
+    ctx.fillRect(p.x, p.y, 3, p.h);
+  }
+
+  // Texture: a few crack marks
+  ctx.strokeStyle = 'rgba(20, 12, 6, 0.6)';
+  ctx.lineWidth = 1;
+  const offsetX = side === 'left' ? 30 : p.w - 50;
+  ctx.beginPath();
+  ctx.moveTo(p.x + offsetX, p.y + 12);
+  ctx.lineTo(p.x + offsetX + 8, p.y + 32);
+  ctx.lineTo(p.x + offsetX + 4, p.y + 50);
+  ctx.stroke();
+
+  // Bridge stub at chasm edge (the bridge that broke)
+  ctx.fillStyle = '#4a3620';
+  if (side === 'left') {
+    ctx.fillRect(p.x + p.w - 8, p.y - 8, 14, 8);
+    ctx.fillStyle = '#5e4528';
+    ctx.fillRect(p.x + p.w - 8, p.y - 8, 14, 2);
+    // jagged broken edge
+    ctx.fillStyle = '#3a2818';
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w + 6, p.y - 8);
+    ctx.lineTo(p.x + p.w + 9, p.y - 4);
+    ctx.lineTo(p.x + p.w + 4, p.y - 1);
+    ctx.lineTo(p.x + p.w + 7, p.y);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillRect(p.x - 6, p.y - 8, 14, 8);
+    ctx.fillStyle = '#5e4528';
+    ctx.fillRect(p.x - 6, p.y - 8, 14, 2);
+    ctx.fillStyle = '#3a2818';
+    ctx.beginPath();
+    ctx.moveTo(p.x - 6, p.y - 8);
+    ctx.lineTo(p.x - 9, p.y - 4);
+    ctx.lineTo(p.x - 4, p.y - 1);
+    ctx.lineTo(p.x - 7, p.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawRock(r) {
+  const speed = Math.abs(r.vy);
+
+  // Motion blur trail when fast
+  if (speed > 80) {
+    const dir = r.vy > 0 ? -1 : 1;
+    ctx.fillStyle = `rgba(180, 120, 70, ${Math.min(0.18, speed / 1500)})`;
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.ellipse(
+        r.x + r.w / 2,
+        r.y + r.h / 2 + dir * i * 14,
+        r.w / 2 - i * 2,
+        r.h / 2,
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+
+  // Faint warm under-glow from planet's heart on each rock
+  const glowAmt = Math.max(0, 1 - (GROUND_Y - r.y) / 500);
+  if (glowAmt > 0.05) {
+    ctx.fillStyle = `rgba(220, 120, 60, ${glowAmt * 0.35})`;
+    ctx.beginPath();
+    ctx.ellipse(r.x + r.w / 2, r.y + r.h + 4, r.w / 2 + 4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Rock body — irregular polygon
+  const grad = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+  grad.addColorStop(0, '#7a6a52');
+  grad.addColorStop(0.4, '#574230');
+  grad.addColorStop(1, '#2e2014');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(r.x + 6, r.y);
+  ctx.lineTo(r.x + r.w - 10, r.y + 1);
+  ctx.lineTo(r.x + r.w - 2, r.y + 6);
+  ctx.lineTo(r.x + r.w, r.y + r.h * 0.5);
+  ctx.lineTo(r.x + r.w - 4, r.y + r.h - 2);
+  ctx.lineTo(r.x + 8, r.y + r.h);
+  ctx.lineTo(r.x + 1, r.y + r.h * 0.55);
+  ctx.lineTo(r.x + 2, r.y + r.h * 0.25);
+  ctx.closePath();
+  ctx.fill();
+
+  // Top highlight
+  ctx.strokeStyle = 'rgba(232, 200, 140, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(r.x + 8, r.y + 1.5);
+  ctx.lineTo(r.x + r.w - 12, r.y + 2);
+  ctx.stroke();
+
+  // Crack
+  ctx.strokeStyle = 'rgba(20, 10, 6, 0.7)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(r.x + r.w * 0.35, r.y + 5);
+  ctx.lineTo(r.x + r.w * 0.45, r.y + r.h * 0.6);
+  ctx.lineTo(r.x + r.w * 0.4, r.y + r.h - 4);
+  ctx.stroke();
+}
+
+function drawSpoon() {
+  const cx = spoon.x + spoon.w / 2;
+  const cy = spoon.y + spoon.h / 2;
+
+  // Squash & stretch
+  const sx = 1 - spoon.bounce * 0.3;
+  const sy = 1 + spoon.bounce * 0.3;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  // Tilt while moving through air
+  if (!spoon.onGround) {
+    const tilt = Math.max(-0.35, Math.min(0.35, spoon.vy / 1400)) * spoon.facing;
+    ctx.rotate(tilt);
+  }
+  ctx.scale(sx, sy);
+
+  // Soft shadow under spoon
+  if (spoon.onGround) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, spoon.h / 2 - 1, spoon.w / 2 + 2, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Stem
+  const stemH = spoon.h * 0.55;
+  const stemGrad = ctx.createLinearGradient(-2, -spoon.h / 2, 2, -spoon.h / 2 + stemH);
+  stemGrad.addColorStop(0, '#d8d8e4');
+  stemGrad.addColorStop(0.5, '#a8a8b8');
+  stemGrad.addColorStop(1, '#7a7a8a');
+  ctx.fillStyle = stemGrad;
+  ctx.fillRect(-2, -spoon.h / 2, 4, stemH);
+  ctx.fillStyle = '#f0f0f8';
+  ctx.fillRect(-1.5, -spoon.h / 2, 0.8, stemH);
+
+  // Bowl
+  const bowlCY = spoon.h * 0.18;
+  ctx.beginPath();
+  ctx.ellipse(0, bowlCY, spoon.w / 2, spoon.h * 0.32, 0, 0, Math.PI * 2);
+  const bowlGrad = ctx.createRadialGradient(-3, bowlCY - 2, 1, 0, bowlCY, spoon.w / 2 + 2);
+  bowlGrad.addColorStop(0, '#fafaff');
+  bowlGrad.addColorStop(0.5, '#c8c8d8');
+  bowlGrad.addColorStop(1, '#7a7a8a');
+  ctx.fillStyle = bowlGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#5a5a6a';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Inner highlight on bowl
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(-2, bowlCY - 4, 3, 1.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyes
+  const eyeY = bowlCY - 1;
+  const eyeOff = spoon.facing > 0 ? 0.5 : -0.5;
+  ctx.fillStyle = '#1a0a14';
+  ctx.beginPath();
+  ctx.arc(-3 + eyeOff, eyeY, 1.4, 0, Math.PI * 2);
+  ctx.arc( 3 + eyeOff, eyeY, 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  // tiny eye-shines
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-2.7 + eyeOff, eyeY - 0.5, 0.4, 0, Math.PI * 2);
+  ctx.arc( 3.3 + eyeOff, eyeY - 0.5, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tiny mouth — content half-smile
+  ctx.strokeStyle = '#1a0a14';
+  ctx.lineWidth = 0.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(eyeOff, bowlCY + 3, 2, 0.3, Math.PI - 0.3);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+function drawEndCard() {
+  if (state === 'playing') return;
+  const fade = Math.min(1, endingTimer * 1.6);
+  ctx.fillStyle = `rgba(8, 4, 12, ${0.55 * fade})`;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const restartHint = isTouchDevice ? 'tap to try again' : 'press space or R to try again';
+
+  if (state === 'won') {
+    ctx.font = 'italic 38px "Cormorant Garamond", Georgia, serif';
+    ctx.fillStyle = `rgba(240, 220, 170, ${fade})`;
+    ctx.shadowColor = 'rgba(240, 180, 100, 0.6)';
+    ctx.shadowBlur = 24;
+    ctx.fillText('the spoon makes it across', W / 2, H / 2 - 18);
+    ctx.shadowBlur = 0;
+    ctx.font = 'italic 16px "EB Garamond", serif';
+    ctx.fillStyle = `rgba(180, 160, 120, ${fade})`;
+    ctx.fillText('— ' + restartHint + ' —', W / 2, H / 2 + 22);
+  } else {
+    ctx.font = 'italic 32px "Cormorant Garamond", Georgia, serif';
+    ctx.fillStyle = `rgba(232, 210, 170, ${fade})`;
+    ctx.shadowColor = 'rgba(220, 180, 120, 0.5)';
+    ctx.shadowBlur = 16;
+    ctx.fillText('oh! a little tumble.', W / 2, H / 2 - 22);
+    ctx.shadowBlur = 0;
+    ctx.font = 'italic 15px "EB Garamond", serif';
+    ctx.fillStyle = `rgba(180, 160, 130, ${fade})`;
+    ctx.fillText('(the rocks will bring the spoon back around shortly.)', W / 2, H / 2 + 8);
+    ctx.fillText('— ' + restartHint + ' —', W / 2, H / 2 + 32);
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function draw() {
+  drawCave();
+  drawPlatform(startPlatform, 'left');
+  drawPlatform(endPlatform, 'right');
+  for (const r of rocks) drawRock(r);
+  drawSpoon();
+  drawEndCard();
+}
+
+function loop(now) {
+  const dt = Math.min(0.033, (now - lastTime) / 1000);
+  lastTime = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
